@@ -125,6 +125,7 @@
 
       // --- STATE UNTUK KAMERA ASLI ---
       const [isCameraActive, setIsCameraActive] = React.useState(false);
+      const [facingMode, setFacingMode] = React.useState("environment"); // Tuan, ini state mutlak pemutar lensa (Depan/Belakang)
       const videoRef = React.useRef(null);
       const canvasRef = React.useRef(null);
       const isCameraActiveRef = React.useRef(false); // Untuk requestAnimationFrame
@@ -230,23 +231,27 @@
         }
       };
 
-      const startCamera = async () => {
+      const startCamera = async (mode = facingMode) => {
         try {
-          // MESIN CERDAS: Coba akses kamera belakang (HP) terlebih dahulu
+          if (videoRef.current && videoRef.current.srcObject) {
+             stopCamera(); // Mesin mematikan kamera dengan aman sebelum memutar lensa
+          }
+          
           let stream;
           try {
-             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
           } catch (fallbackErr) {
-             // Jika gagal/di laptop, paksa akses kamera apa pun yang tersedia (Webcam Asli)
+             // Jika lensa spesifik gagal (misal di PC/Laptop), paksa akses kamera apa pun
              stream = await navigator.mediaDevices.getUserMedia({ video: true });
           }
           
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            videoRef.current.setAttribute("playsinline", true); // Perintah Mutlak untuk sistem iOS/iPhone
+            videoRef.current.setAttribute("playsinline", true); // Perintah Mutlak iOS
             videoRef.current.play();
             isCameraActiveRef.current = true;
             setIsCameraActive(true);
+            setFacingMode(mode); // Mengunci ingatan arah lensa saat ini
             requestAnimationFrame(scanTick);
           }
         } catch (err) {
@@ -261,6 +266,16 @@
           videoRef.current.srcObject.getTracks().forEach(track => track.stop());
           videoRef.current.srcObject = null;
         }
+      };
+
+      // Tuan, ini adalah Mesin Pemutar Lensa (Flip Camera)
+      const toggleCamera = () => {
+         const newMode = facingMode === "environment" ? "user" : "environment";
+         if (isCameraActive) {
+            startCamera(newMode); // Jika kamera menyala, langsung putar
+         } else {
+            setFacingMode(newMode); // Jika mati, siapkan untuk dinyalakan ke arah baru
+         }
       };
 
       const scanTick = () => {
@@ -489,9 +504,19 @@
                     )}
                   </div>
 
-                  <button onClick={isCameraActive ? stopCamera : startCamera} className={`w-64 py-4 rounded-2xl font-black text-white text-sm shadow-xl transition-all active:scale-95 border ${isCameraActive ? 'bg-red-600 border-red-400/50' : 'bg-gradient-to-r from-green-500 to-emerald-600 border-green-400/50'}`}>
-                    {isCameraActive ? '❌ MATIKAN KAMERA' : '▶️ NYALAKAN KAMERA SCANNER'}
-                  </button>
+                  {/* Tata Letak Tombol Kamera Disempurnakan */}
+                  <div className="flex flex-col gap-3 w-64 md:w-80 relative z-20">
+                    <button onClick={() => isCameraActive ? stopCamera() : startCamera(facingMode)} className={`w-full py-4 rounded-2xl font-black text-white text-sm shadow-xl transition-all active:scale-95 border ${isCameraActive ? 'bg-red-600 border-red-400/50' : 'bg-gradient-to-r from-green-500 to-emerald-600 border-green-400/50'}`}>
+                      {isCameraActive ? '❌ MATIKAN KAMERA' : '▶️ NYALAKAN KAMERA'}
+                    </button>
+
+                    {/* Tombol Pemutar Lensa Mutlak (Hanya Muncul Saat Kamera Menyala) */}
+                    {isCameraActive && (
+                       <button onClick={toggleCamera} className="w-full py-3 rounded-2xl font-bold text-gray-200 text-xs shadow-md transition-all active:scale-95 border bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border-slate-600 flex items-center justify-center gap-2">
+                          🔄 PUTAR KAMERA (DEPAN / BELAKANG)
+                       </button>
+                    )}
+                  </div>
 
                   {/* MODAL HASIL SCAN (MENAMPILKAN FOTO SELFIE) */}
                   {scannedData && (
