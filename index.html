@@ -232,17 +232,25 @@
 
       const startCamera = async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+          // MESIN CERDAS: Coba akses kamera belakang (HP) terlebih dahulu
+          let stream;
+          try {
+             stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+          } catch (fallbackErr) {
+             // Jika gagal/di laptop, paksa akses kamera apa pun yang tersedia (Webcam Asli)
+             stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          }
+          
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            videoRef.current.setAttribute("playsinline", true); // penting untuk iOS
+            videoRef.current.setAttribute("playsinline", true); // Perintah Mutlak untuk sistem iOS/iPhone
             videoRef.current.play();
             isCameraActiveRef.current = true;
             setIsCameraActive(true);
             requestAnimationFrame(scanTick);
           }
         } catch (err) {
-          alert("Gagal mengakses kamera! Pastikan izin kamera telah diberikan. Detail: " + err.message);
+          alert("🔒 KAMERA ASLI TERBLOKIR BROWSER!\n\nBrowser Tuan melarang akses ke kamera fisik karena aplikasi ini dibuka di dalam 'Layar Pratinjau' Glitch.\n\nSOLUSI MUTLAK:\n1. Buka aplikasi ini di 'New Window/Tab Baru'.\n2. Atau buka link aplikasi ini langsung dari HP Tuan.\n3. Pastikan Tuan mengklik 'Allow/Izinkan' saat browser meminta izin kamera.\n\nDetail Sistem: " + err.message);
         }
       };
 
