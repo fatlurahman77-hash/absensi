@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Absensi Smart School TK PGRI</title>
   
+  <!-- CSS Framework dan React via CDN (HTML Murni tanpa Vercel/Node) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Mesin Pembaca QR Code Nyata -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
   <style>
@@ -46,7 +49,7 @@
       z-index: -10;
     }
 
-    /* Efek Gelembung */
+    /* Efek Gelembung Air */
     .bubble {
       position: absolute;
       bottom: -50px;
@@ -57,7 +60,7 @@
       z-index: -5;
     }
 
-    /* Glassmorphism Dark Mode Terkunci */
+    /* Glassmorphism Dark Mode (Komponen UI Terkunci) */
     .glass-dark {
       background: rgba(15, 23, 42, 0.90);
       backdrop-filter: blur(16px);
@@ -92,10 +95,10 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // GANTI DENGAN URL DEPLOY TERBARU TUAN!
-    const API_URL = "https://script.google.com/macros/s/AKfycbyN5J-6IB-98EV2SAuLa3ysvt13Jmt8IWmxVLkK9YWH8Exd-7MNJS6xglDw5qy7YKYY/exec";
+    // GANTI DENGAN URL DEPLOY TERBARU TUAN! (Wajib diisi setelah deploy Code.gs baru)
+    const API_URL = "https://script.google.com/macros/s/AKfycbzM6T0CjiOjUDU_TptCvTfgT9EUh8dypTKrR0nDXwbSR6yXi7V5kHrb8amuaDgGC33drw/exec"; 
 
-    // Komponen Gelembung Air Mutlak (50 Gelembung)
+    // Komponen Gelembung Air Mutlak (50 Buah)
     const Bubbles = () => {
       const bubbles = Array.from({ length: 50 });
       return (
@@ -114,27 +117,26 @@
     };
 
     const App = () => {
-      // State Navigasi & Data
       const [activeTab, setActiveTab] = useState('dashboard');
       const [students, setStudents] = useState([]);
       const [teachers, setTeachers] = useState([]);
       const [searchQuery, setSearchQuery] = useState('');
       
-      // State UI Interaksi
       const [isFetching, setIsFetching] = useState(false);
       const [showToast, setShowToast] = useState(false);
       const [toastMsg, setToastMsg] = useState("");
       const [messageBox, setMessageBox] = useState({ show: false, title: '', message: '', type: 'info' });
       const [scannedData, setScannedData] = useState(null);
 
-      // State Kamera Asli Perangkat Keras
       const [isCameraActive, setIsCameraActive] = useState(false);
-      const [facingMode, setFacingMode] = useState("environment"); // "environment" = belakang, "user" = depan
+      const [facingMode, setFacingMode] = useState("environment"); 
       const [isProcessingQR, setIsProcessingQR] = useState(false);
+      
       const videoRef = useRef(null);
       const canvasRef = useRef(null);
       const isCameraActiveRef = useRef(false);
 
+      // Tahun Ajaran Dinamis: Berubah 1 Juli
       const getTahunAjaran = () => {
         const now = new Date();
         const year = now.getFullYear();
@@ -143,7 +145,6 @@
       };
       const tahunAjaran = getTahunAjaran();
 
-      // Matikan kamera jika pindah menu
       useEffect(() => {
          if (activeTab !== 'scan') stopCamera();
       }, [activeTab]);
@@ -195,13 +196,13 @@
                 triggerSuccess(`Berhasil menarik ${serverTeachers.length} data Guru!`);
               }
             } else {
-               showMessage("Format Gagal", "Sistem Google membalas dengan HTML. Pastikan tab Master_Siswa & Master_Guru bernama tepat.", "error");
+               showMessage("Format Gagal", "Pastikan API_URL benar dan mengarah ke Code.gs terbaru yang baru saja di-deploy.", "error");
             }
           } catch (parseError) {
-             showMessage("Error Server (Crash)", "Data gagal diproses (Bukan JSON). Google Apps Script mengalami crash.", "error");
+             showMessage("Error Server", "Data gagal diproses. Pastikan akses Google Script diset ke 'Anyone'.", "error");
           }
         } catch (error) {
-          showMessage("Gagal Terhubung (CORS)", "Pastikan API_URL di-deploy 'New Version' dengan akses 'Anyone'.", "error");
+          showMessage("Gagal Terhubung", "Masalah jaringan atau API belum di-deploy ulang dengan benar.", "error");
         } finally {
           setIsFetching(false);
         }
@@ -212,16 +213,14 @@
           if (videoRef.current && videoRef.current.srcObject) stopCamera();
           let stream;
           try {
-             // Upayakan kamera spesifik (depan/belakang)
              stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
           } catch (e) {
-             // Fallback jika tidak mendukung mode
              stream = await navigator.mediaDevices.getUserMedia({ video: true });
           }
           
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            videoRef.current.setAttribute("playsinline", true); // Wajib untuk iOS/Safari
+            videoRef.current.setAttribute("playsinline", true);
             videoRef.current.play();
             isCameraActiveRef.current = true;
             setIsCameraActive(true);
@@ -229,7 +228,7 @@
             requestAnimationFrame(scanTick);
           }
         } catch (err) {
-          showMessage("Kamera Terblokir", "Browser / Perangkat menolak akses kamera fisik. Pastikan Anda mengizinkan akses.", "error");
+          showMessage("Kamera Terblokir", "Perangkat menolak akses kamera. Berikan izin di browser.", "error");
         }
       };
 
@@ -260,8 +259,8 @@
              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
              const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
              if (code && code.data) {
-                // Konversi gambar ke base64 (akan dikirim hanya untuk GURU)
-                const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+                // Konversi gambar ke base64 untuk dikirim ke server (Jika guru)
+                const base64Image = canvas.toDataURL('image/jpeg', 0.7);
                 handleQRDetected(code.data, base64Image);
                 return; 
              }
@@ -274,14 +273,11 @@
          setIsProcessingQR(true); 
          stopCamera();
          
-         /* ---------------------------------------------------------
-          * LOGIKA UNTUK GURU (MENGIRIM FOTO - MEMBUTUHKAN BUKTI FISIK)
-          * ---------------------------------------------------------*/
+         // 1. CEK GURU (DENGAN FOTO KE DRIVE, 10 KOLOM)
          const guru = teachers.find(t => t.nik === qrNik || t.id.toString() === qrNik.toString());
          if (guru) {
-            triggerSuccess("⏳ Wajah tertangkap! Mengunggah bukti kehadiran Guru...");
+            triggerSuccess("⏳ Wajah tertangkap! Mengunggah bukti foto ke Server...");
             try {
-                // Payload LENGKAP dengan fotoBase64
                 const payload = { action: "absen_guru", data: { nik: guru.nik || guru.id, fotoBase64: fotoBase64, fotoMime: "image/jpeg", jenis: "datang" } };
                 const response = await fetch(API_URL, { 
                     method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) 
@@ -297,20 +293,18 @@
                     showMessage("Ditolak Server", resData.pesan, "error");
                 }
             } catch (err) {
-                showMessage("Gagal Mengunggah", "Koneksi terputus saat menyimpan foto ke Google Drive/Sheets.", "error");
+                showMessage("Gagal Mengunggah", "Koneksi terputus saat menyimpan foto.", "error");
             }
             setIsProcessingQR(false);
             return;
          }
 
-         /* ---------------------------------------------------------
-          * LOGIKA UNTUK SISWA (TIDAK MENGIRIM FOTO - HEMAT MEMORI)
-          * ---------------------------------------------------------*/
+         // 2. CEK SISWA (TANPA FOTO, HEMAT MEMORI DRIVE, 8 KOLOM)
          const siswa = students.find(s => s.nik === qrNik || s.id.toString() === qrNik.toString());
          if (siswa) {
-            triggerSuccess("⏳ ID terdeteksi! Mencatat kehadiran Siswa di Server...");
+            triggerSuccess("⏳ Mengirim ID Siswa ke Server (Tanpa Foto)...");
             try {
-                // Payload HEMAT MEMORI (Tanpa fotoBase64 dan fotoMime)
+                // HANYA MENGIRIM NIK (Tidak mengirim fotoBase64)
                 const payload = { action: "absen_siswa", data: { nik: siswa.nik || siswa.id, jenis: "datang" } };
                 const response = await fetch(API_URL, { 
                     method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) 
@@ -320,8 +314,9 @@
                 if(resData.status === "sukses") {
                     const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                     setStudents(students.map(s => s.id === siswa.id ? { ...s, status: 'Hadir', time: timeStr } : s));
-                    // Tidak menampilkan foto selfie untuk siswa di pop-up
-                    setScannedData({ ...siswa, time: timeStr });
+                    
+                    // Siswa tidak memunculkan foto, hanya avatar (sesuai hemat memori)
+                    setScannedData({ ...siswa, foto: null, time: timeStr }); 
                     triggerSuccess("✅ Mutlak! Absen Siswa masuk ke Tab Absensi_Siswa.");
                 } else {
                     showMessage("Ditolak Server", resData.pesan, "error");
@@ -333,24 +328,23 @@
             return;
          }
 
-         showMessage("Data Tak Dikenali", `QR Code [${qrNik}] tidak ada dalam memori aplikasi. Pastikan Anda sudah Tarik Data Server!`, "error");
+         showMessage("Data Tak Dikenali", `QR Code [${qrNik}] tidak ada di memori. Lakukan Tarik Data Server!`, "error");
          setIsProcessingQR(false);
       };
 
       return (
         <div className="min-h-screen relative flex justify-center pb-24 text-white font-sans">
           
-          {/* Latar Belakang Screensaver Terang + Efek Gelembung Mutlak */}
           <div className="bg-screensaver"></div>
           <Bubbles />
 
-          {/* Toast Notification */}
-          <div className={`fixed top-6 right-4 glass-dark px-4 py-3 rounded-2xl border-l-4 border-green-500 flex items-center gap-3 z-[100] transition-all duration-500 ${showToast ? 'translate-x-0 opacity-100' : 'translate-x-[150%] opacity-0'}`}>
-             <div className="text-xl">✅</div>
-             <div><p className="font-bold text-sm">Sistem</p><p className="text-xs text-gray-300 w-44">{toastMsg}</p></div>
-          </div>
+          {showToast && (
+             <div className="fixed top-6 right-4 glass-dark px-4 py-3 rounded-2xl border-l-4 border-green-500 flex items-center gap-3 z-[100] animate-pop-in shadow-2xl">
+                <div className="text-xl">✅</div>
+                <div><p className="font-bold text-sm">Sistem</p><p className="text-xs text-gray-300 w-44">{toastMsg}</p></div>
+             </div>
+          )}
 
-          {/* Message Box Cerdas */}
           {messageBox.show && (
               <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-pop-in">
                   <div className="bg-slate-800 p-6 rounded-3xl border border-slate-600 shadow-2xl max-w-sm w-full text-center">
@@ -362,7 +356,6 @@
               </div>
           )}
 
-          {/* Pembungkus UI Dark Mode (Terkunci Mutlak) */}
           <div className="w-full max-w-md min-h-screen flex flex-col relative z-10 glass-dark border-x border-slate-700/50 shadow-2xl">
             <header className="p-4 pt-6 rounded-b-3xl glass-dark border-b border-slate-600 shadow-xl flex flex-col items-center relative z-40">
               <div className="text-center w-full px-2">
@@ -376,7 +369,6 @@
 
             <main className="flex-1 w-full p-4 overflow-y-auto">
               
-              {/* Beranda Dashboard */}
               {activeTab === 'dashboard' && (
                 <div className="space-y-4 animate-pop-in">
                   <div className="glass-card-dark p-5 rounded-3xl flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg border border-slate-600">
@@ -398,7 +390,6 @@
                 </div>
               )}
 
-              {/* Menu Data (Siswa & Guru) - Tanpa Input Manual */}
               {(activeTab === 'siswa' || activeTab === 'guru') && (
                 <div className="space-y-4 animate-pop-in">
                   <button onClick={() => tarikDataServer(activeTab)} disabled={isFetching} className={`w-full py-3.5 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 text-sm transition-all border border-blue-500/30 ${isFetching ? 'bg-slate-700 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:brightness-110 active:scale-95'}`}>
@@ -432,12 +423,12 @@
                 </div>
               )}
 
-              {/* Menu Pemindai Kamera Fisik & UI Balik Lensa */}
+              {/* Tampilan Scanner Universal (Siswa & Guru) */}
               {activeTab === 'scan' && (
                 <div className="space-y-6 flex flex-col items-center animate-pop-in">
                   <div className="text-center mt-2">
                     <h2 className="text-2xl font-black text-white">Scanner Universal</h2>
-                    <p className="text-xs text-gray-400">Arahkan QR Guru atau Siswa. Mesin akan mendeteksi otomatis.</p>
+                    <p className="text-xs text-gray-400 mt-1">Siswa: Hanya deteksi ID.<br/>Guru: Deteksi ID & Unggah Foto Wajah.</p>
                   </div>
                   
                   <div className="relative w-64 h-64 md:w-80 md:h-80 bg-black rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(34,197,94,0.3)] border-4 border-slate-800 flex items-center justify-center">
@@ -466,12 +457,12 @@
                     )}
                   </div>
 
-                  {/* Modal Validasi - Tampil JIKA Sukses Validasi Server */}
+                  {/* Modal Sukses (Hanya tampil jika server membalas 'sukses') */}
                   {scannedData && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-pop-in">
                       <div className="glass-card-dark p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center w-full max-w-xs border-4 border-green-500 relative overflow-hidden">
                          <button onClick={() => setScannedData(null)} className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">❌</button>
-                         {/* Avatar untuk siswa, Selfie Asli hanya untuk Guru */}
+                         {/* Avatar untuk siswa, Selfie untuk guru */}
                          {scannedData.foto ? <img src={scannedData.foto} alt="Selfie" className="w-24 h-24 rounded-full border-4 border-white mb-2 object-cover shadow-lg z-10" /> : <div className="text-7xl mb-2 animate-bounce z-10">{scannedData.avatar}</div>}
                          <h3 className="text-2xl font-black text-white z-10 mt-2">{scannedData.name}</h3>
                          <p className="text-sm font-bold text-cyan-400 mt-1 uppercase z-10">{scannedData.type} • {scannedData.kelas || scannedData.jabatan}</p>
@@ -483,7 +474,7 @@
               )}
             </main>
 
-            {/* Navigasi Bawah */}
+            {/* Navigasi Bawah Terkunci */}
             <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-sm rounded-3xl z-50 glass-dark border border-slate-600 shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-2">
               <ul className="flex flex-row justify-between items-center relative px-2">
                 {[
