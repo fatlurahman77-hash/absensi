@@ -33,6 +33,7 @@
       100% { opacity: 1; transform: scale(1) translateY(0); }
     }
     
+    /* Latar Screensaver Cerah Kaca */
     .bg-screensaver {
       position: fixed;
       top: 0;
@@ -45,6 +46,7 @@
       z-index: -10;
     }
 
+    /* Efek Gelembung */
     .bubble {
       position: absolute;
       bottom: -50px;
@@ -55,6 +57,7 @@
       z-index: -5;
     }
 
+    /* Glassmorphism Dark Mode Terkunci */
     .glass-dark {
       background: rgba(15, 23, 42, 0.90);
       backdrop-filter: blur(16px);
@@ -63,7 +66,7 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
     .glass-card-dark {
-      background: rgba(30, 41, 59, 0.80);
+      background: rgba(30, 41, 59, 0.85);
       backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.05);
     }
@@ -92,7 +95,7 @@
     // URL MUTLAK GOOGLE APPS SCRIPT
     const API_URL = "https://script.google.com/macros/s/AKfycbyN5J-6IB-98EV2SAuLa3ysvt13Jmt8IWmxVLkK9YWH8Exd-7MNJS6xglDw5qy7YKYY/exec";
 
-    // Komponen Gelembung Air (Volume Banyak)
+    // Komponen Gelembung Air Mutlak (50 Gelembung)
     const Bubbles = () => {
       const bubbles = Array.from({ length: 50 });
       return (
@@ -136,7 +139,7 @@
         const now = new Date();
         const year = now.getFullYear();
         const month = now.getMonth(); 
-        // Di JavaScript, bulan 0 = Januari, 6 = Juli.
+        // JavaScript bulan: 0 = Januari, 6 = Juli.
         return month >= 6 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
       };
       const tahunAjaran = getTahunAjaran();
@@ -196,10 +199,10 @@
                showMessage("Format Gagal", "Sistem Google membalas dengan HTML. Pastikan tab Master_Siswa & Master_Guru bernama tepat.", "error");
             }
           } catch (parseError) {
-             showMessage("Error JSON Google", "Data gagal diproses. Pastikan file Apps Script (Code.gs) berfungsi dan tidak crash.", "error");
+             showMessage("Error Server (Crash)", "Data gagal diproses (Bukan JSON). Google Apps Script mengalami crash. Cek nama tab.", "error");
           }
         } catch (error) {
-          showMessage("Koneksi / CORS Terblokir", "Browser memblokir jalur. Pastikan API_URL benar dan di-deploy dengan opsi akses 'Anyone'.", "error");
+          showMessage("Gagal Terhubung (CORS)", "Pastikan API_URL di-deploy 'New Version' dengan akses 'Anyone'.", "error");
         } finally {
           setIsFetching(false);
         }
@@ -210,15 +213,16 @@
           if (videoRef.current && videoRef.current.srcObject) stopCamera();
           let stream;
           try {
-             // Mencoba memanggil lensa spesifik (depan/belakang)
+             // Upayakan kamera spesifik (depan/belakang)
              stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
           } catch (e) {
-             // Jika gagal, paksa panggil kamera apapun yang ada (laptop/komputer)
+             // Fallback jika tidak mendukung mode
              stream = await navigator.mediaDevices.getUserMedia({ video: true });
           }
+          
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            videoRef.current.setAttribute("playsinline", true); // Wajib agar jalan di iOS/iPhone
+            videoRef.current.setAttribute("playsinline", true); // Wajib untuk iOS/Safari
             videoRef.current.play();
             isCameraActiveRef.current = true;
             setIsCameraActive(true);
@@ -226,7 +230,7 @@
             requestAnimationFrame(scanTick);
           }
         } catch (err) {
-          showMessage("Kamera Terblokir", "Browser / Perangkat menolak akses kamera fisik. Pastikan Anda mengizinkan akses kamera pada website ini.", "error");
+          showMessage("Kamera Terblokir", "Browser / Perangkat menolak akses kamera fisik. Pastikan Anda mengizinkan akses.", "error");
         }
       };
 
@@ -257,7 +261,6 @@
              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
              const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
              if (code && code.data) {
-                // Kamera berhasil membaca NIK! Ambil foto wajah saat ini juga
                 const base64Image = canvas.toDataURL('image/jpeg', 0.8);
                 handleQRDetected(code.data, base64Image);
                 return; 
@@ -268,18 +271,23 @@
       };
 
       const handleQRDetected = async (qrNik, fotoBase64) => {
-         setIsProcessingQR(true); // Kunci scanner agar tidak dobel scan
+         setIsProcessingQR(true); 
          stopCamera();
          
-         // Cek apakah itu ID Guru
          const guru = teachers.find(t => t.nik === qrNik || t.id.toString() === qrNik.toString());
          if (guru) {
-            triggerSuccess("⏳ Wajah tertangkap! Mengirim data absen dan foto ke Server...");
+            triggerSuccess("⏳ Wajah tertangkap! Mengirim foto asli & absen ke Server...");
             try {
                 const payload = { action: "absen_guru", data: { nik: guru.nik || guru.id, fotoBase64: fotoBase64, fotoMime: "image/jpeg", jenis: "datang" } };
-                const response = await fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+                const response = await fetch(API_URL, { 
+                    method: 'POST', 
+                    redirect: 'follow', 
+                    headers: { "Content-Type": "text/plain;charset=utf-8" }, 
+                    body: JSON.stringify(payload) 
+                });
                 const resData = await response.json();
                 
+                // VALIDASI MUTLAK
                 if(resData.status === "sukses") {
                     const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                     setTeachers(teachers.map(t => t.id === guru.id ? { ...t, status: 'Hadir', time: timeStr } : t));
@@ -289,13 +297,12 @@
                     showMessage("Ditolak Server", resData.pesan, "error");
                 }
             } catch (err) {
-                showMessage("Gagal Mengunggah", "Koneksi terputus saat menyimpan foto ke Google Drive.", "error");
+                showMessage("Gagal Mengunggah", "Koneksi terputus saat menyimpan foto ke Google Drive/Sheets.", "error");
             }
             setIsProcessingQR(false);
             return;
          }
 
-         // Cek apakah itu ID Siswa (Karena backend belum ada absen_siswa, kita simpan lokal dahulu)
          const siswa = students.find(s => s.nik === qrNik || s.id.toString() === qrNik.toString());
          if (siswa) {
             triggerSuccess("⏳ Memverifikasi ID Siswa...");
@@ -303,21 +310,20 @@
                 const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                 setStudents(students.map(s => s.id === siswa.id ? { ...s, status: 'Hadir', time: timeStr } : s));
                 setScannedData({ ...siswa, foto: fotoBase64, time: timeStr });
-                triggerSuccess("✅ Siswa Terverifikasi! (Data Siswa sementara disimpan lokal)");
+                triggerSuccess("✅ Siswa Terverifikasi!");
                 setIsProcessingQR(false);
             }, 1000);
             return;
          }
 
-         // Jika NIK tidak dikenali dari data yang ditarik
-         showMessage("Data Tak Dikenali", `QR Code [${qrNik}] tidak ada dalam memori. Tarik Server terlebih dahulu!`, "error");
+         showMessage("Data Tak Dikenali", `QR Code [${qrNik}] tidak ada dalam memori aplikasi. Pastikan Anda sudah Tarik Data Server!`, "error");
          setIsProcessingQR(false);
       };
 
       return (
         <div className="min-h-screen relative flex justify-center pb-24 text-white font-sans">
           
-          {/* Latar Belakang Screensaver Terang + Efek Gelembung */}
+          {/* Latar Belakang Screensaver Terang + Efek Gelembung Mutlak */}
           <div className="bg-screensaver"></div>
           <Bubbles />
 
@@ -327,7 +333,7 @@
              <div><p className="font-bold text-sm">Sistem</p><p className="text-xs text-gray-300 w-44">{toastMsg}</p></div>
           </div>
 
-          {/* Message Box Pengganti Alert */}
+          {/* Message Box Cerdas */}
           {messageBox.show && (
               <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-pop-in">
                   <div className="bg-slate-800 p-6 rounded-3xl border border-slate-600 shadow-2xl max-w-sm w-full text-center">
@@ -339,7 +345,7 @@
               </div>
           )}
 
-          {}
+          {/* Pembungkus UI Dark Mode (Terkunci Mutlak) */}
           <div className="w-full max-w-md min-h-screen flex flex-col relative z-10 glass-dark border-x border-slate-700/50 shadow-2xl">
             <header className="p-4 pt-6 rounded-b-3xl glass-dark border-b border-slate-600 shadow-xl flex flex-col items-center relative z-40">
               <div className="text-center w-full px-2">
@@ -353,6 +359,7 @@
 
             <main className="flex-1 w-full p-4 overflow-y-auto">
               
+              {/* Beranda Dashboard */}
               {activeTab === 'dashboard' && (
                 <div className="space-y-4 animate-pop-in">
                   <div className="glass-card-dark p-5 rounded-3xl flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg border border-slate-600">
@@ -374,7 +381,7 @@
                 </div>
               )}
 
-              {/* Tampilan Menu Daftar Siswa / Guru (Mutlak Tanpa Input Manual) */}
+              {/* Menu Data (Siswa & Guru) - Tanpa Input Manual */}
               {(activeTab === 'siswa' || activeTab === 'guru') && (
                 <div className="space-y-4 animate-pop-in">
                   <button onClick={() => tarikDataServer(activeTab)} disabled={isFetching} className={`w-full py-3.5 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-2 text-sm transition-all border border-blue-500/30 ${isFetching ? 'bg-slate-700 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:brightness-110 active:scale-95'}`}>
@@ -408,10 +415,13 @@
                 </div>
               )}
 
-              {/* Tampilan Menu Kamera Scanner Fisik Mutlak */}
+              {/* Menu Pemindai Kamera Fisik & UI Balik Lensa */}
               {activeTab === 'scan' && (
                 <div className="space-y-6 flex flex-col items-center animate-pop-in">
-                  <div className="text-center mt-2"><h2 className="text-2xl font-black text-white">Scanner Mutlak</h2><p className="text-xs text-gray-400">Kamera akan memotret Wajah Asli dan mencocokkan ID Server.</p></div>
+                  <div className="text-center mt-2">
+                    <h2 className="text-2xl font-black text-white">Scanner Kamera Fisik</h2>
+                    <p className="text-xs text-gray-400">Memotret wajah asli dan memvalidasi ke Pangkalan Data.</p>
+                  </div>
                   
                   <div className="relative w-64 h-64 md:w-80 md:h-80 bg-black rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(34,197,94,0.3)] border-4 border-slate-800 flex items-center justify-center">
                     <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted></video>
@@ -424,21 +434,22 @@
                     <div className="absolute bottom-4 left-4 w-8 h-8 border-b-4 border-l-4 border-green-500 rounded-bl-xl z-20"></div>
                     <div className="absolute bottom-4 right-4 w-8 h-8 border-b-4 border-r-4 border-green-500 rounded-br-xl z-20"></div>
                     
-                    {!isCameraActive && <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-10"><span className="text-5xl opacity-50 mb-2">📷</span><span className="text-xs font-bold text-gray-400">Kamera Fisik Mati</span></div>}
-                    {isProcessingQR && <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-30"><span className="text-4xl animate-spin mb-2">⏳</span><span className="text-xs font-bold text-white bg-green-700 px-3 py-1 rounded-full">Memproses Foto & Server...</span></div>}
+                    {!isCameraActive && <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-10"><span className="text-5xl opacity-50 mb-2">📷</span><span className="text-xs font-bold text-gray-400">Kamera Mati</span></div>}
+                    {isProcessingQR && <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-30"><span className="text-4xl animate-spin mb-2">⏳</span><span className="text-xs font-bold text-white bg-green-700 px-3 py-1 rounded-full">Validasi Server...</span></div>}
                   </div>
 
                   <div className="flex flex-col gap-3 w-64 md:w-80 relative z-20">
                     <button onClick={() => isCameraActive ? stopCamera() : startCamera(facingMode)} disabled={isProcessingQR} className={`w-full py-4 rounded-2xl font-black text-white text-sm shadow-xl transition-all active:scale-95 border ${isCameraActive ? 'bg-red-600 border-red-400/50' : 'bg-gradient-to-r from-green-500 to-emerald-600 border-green-400/50'} ${isProcessingQR ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                      {isCameraActive ? '❌ MATIKAN KAMERA' : '▶️ NYALAKAN KAMERA FISIK'}
+                      {isCameraActive ? '❌ MATIKAN KAMERA' : '▶️ NYALAKAN KAMERA (ASLI)'}
                     </button>
                     {isCameraActive && (
                        <button onClick={toggleCamera} disabled={isProcessingQR} className="w-full py-3 rounded-2xl font-bold text-gray-200 text-xs shadow-md transition-all active:scale-95 border bg-slate-800/80 hover:bg-slate-700 backdrop-blur-md border-slate-600 flex items-center justify-center gap-2">
-                          🔄 PUTAR LENSA (DEPAN/BELAKANG)
+                          🔄 PUTAR KAMERA (DEPAN/BELAKANG)
                        </button>
                     )}
                   </div>
 
+                  {/* Modal Validasi - Tampil JIKA Sukses Validasi */}
                   {scannedData && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-pop-in">
                       <div className="glass-card-dark p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center w-full max-w-xs border-4 border-green-500 relative overflow-hidden">
@@ -454,6 +465,7 @@
               )}
             </main>
 
+            {/* Navigasi Bawah */}
             <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-sm rounded-3xl z-50 glass-dark border border-slate-600 shadow-[0_10px_40px_rgba(0,0,0,0.8)] p-2">
               <ul className="flex flex-row justify-between items-center relative px-2">
                 {[
